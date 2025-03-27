@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /**
  * @brief Ekstrak file gambar menjadi array of uint32_t
