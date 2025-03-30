@@ -14,5 +14,18 @@ extern int minSize;
  */ 
 void chooseErrorMethod();
 
+/**
+* @brief Menghitung Variance dari blok data gambar
+* @param data Pointer ke data gambar
+* @param width Lebar gambar
+* @param height Tinggi gambar
+*/
+double calculateVariance(uint8_t* data, int width, int height);
+
+
+double calculateMAD();
+double calculateMaxPixelDifferences();
+double calculateEntropy();
+double calculateSSI();
 
 #endif // ERRORCALCULATIONS_H
