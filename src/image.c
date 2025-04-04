@@ -62,56 +62,6 @@ void extractJPEG(FILE* file, Image* im) {
     printf("\033[1;32m[INFO]\033[0m Gambar JPEG berhasil diekstrak\n\n");
 }
 
-void saveJPEG(char* path, Image* im) {
-    struct jpeg_compress_struct cinfo;
-    struct jpeg_error_mgr jerr;
-
-    // Minta input nama file
-    printf("\033[1;33m[Input]\033[0m Masukkan nama file untuk menyimpan gambar JPEG (DENGAN ekstensi): ");
-    char filename[100];
-    scanf("%99s", filename); // Limit input to avoid overflow
-    snprintf(path, 256, "%s%s", path, filename); // Safely concatenate strings
-    printf("\n\n\033[1;32m[INFO]\033[0m Menyimpan gambar JPEG sebagai %s\n", path);
-    
-    FILE* file = fopen(filename, "wb");
-    if (!file) {
-        printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar JPEG\n");
-        return;
-    }
-    cinfo.err = jpeg_std_error(&jerr);
-    jpeg_create_compress(&cinfo);
-    jpeg_stdio_dest(&cinfo, file);
-    
-    cinfo.image_width = im->width;
-    cinfo.image_height = im->height;
-    if (im->data == NULL) {
-        printf("\033[1;31m[ERROR]\033[0m Data gambar tidak valid\n");
-        fclose(file);
-        return;
-    }
-    cinfo.input_components = 3;  // Assuming RGB format
-    cinfo.in_color_space = JCS_RGB;
-    int channels = 3;
-    
-    jpeg_set_defaults(&cinfo);
-
-    // Set quality to 100 to avoid compression
-    jpeg_set_quality(&cinfo, 100, TRUE);
-
-    jpeg_start_compress(&cinfo, TRUE);
-    
-    uint8_t* row_pointer[1];
-    while (cinfo.next_scanline < cinfo.image_height) {
-        row_pointer[0] = &im->data[cinfo.next_scanline * im->width * channels];
-        jpeg_write_scanlines(&cinfo, row_pointer, 1);
-    }
-    
-    jpeg_finish_compress(&cinfo);
-    jpeg_destroy_compress(&cinfo);
-    fclose(file);
-    
-    printf("\033[1;32m[INFO]\033[0m Gambar JPEG berhasil disimpan sebagai %s\n\n", filename);
-}
 
 void paethFilter(uint8_t* scanline, uint8_t* prevScanline, int stride, int filterType) {
     for (int x = 0; x < stride; x++) {
@@ -230,7 +180,7 @@ void extractBMP(FILE* file, struct Image* im) {
 }
 
 void extractImage(FILE* file, struct Image* im) {
-    ImageFormat format = detectImageFormat(file);
+    format = detectImageFormat(file);
     
     switch (format) {
         case IMAGE_JPEG:
@@ -244,6 +194,23 @@ void extractImage(FILE* file, struct Image* im) {
             break;
         default:
             printf("\033[1;31m[ERROR]\033[0m File bukan bertipe gambar (.JPG/.JPEG, .PNG, .BMP)\n");
+            break;
+    }
+}
+
+void saveImage(const char* path, Image *im) {
+    switch (format) {
+        case IMAGE_JPEG:
+            saveJPEG(path, im);
+            break;
+        case IMAGE_PNG:
+            // Implement PNG saving function
+            break;
+        case IMAGE_BMP:
+            // Implement BMP saving function
+            break;
+        default:
+            printf("\033[1;31m[ERROR]\033[0m Format gambar tidak didukung untuk penyimpanan\n");
             break;
     }
 }
@@ -293,4 +260,202 @@ void divideNConquer(Image* im, double threshold, int startX, int endX, int start
     divideNConquer(im, threshold, midX+1, endX, startY, midY, minSize); 
     divideNConquer(im, threshold, startX, midX, midY+1, endY, minSize); 
     divideNConquer(im, threshold, midX+1, endX, midY+1, endY, minSize); 
+}
+
+void saveJPEG(char* path, Image* im) {
+    struct jpeg_compress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+
+    // Minta input nama file
+    printf("\033[1;33m[Input]\033[0m Masukkan nama file untuk menyimpan gambar JPEG (DENGAN ekstensi): ");
+    char filename[100];
+    scanf("%99s", filename); // Limit input to avoid overflow
+    snprintf(path, 256, "%s%s", path, filename); // Safely concatenate strings
+    printf("\n\n\033[1;32m[INFO]\033[0m Menyimpan gambar JPEG sebagai %s\n", path);
+    
+    FILE* file = fopen(filename, "wb");
+    if (!file) {
+        printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar JPEG\n");
+        return;
+    }
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_compress(&cinfo);
+    jpeg_stdio_dest(&cinfo, file);
+    
+    cinfo.image_width = im->width;
+    cinfo.image_height = im->height;
+    if (im->data == NULL) {
+        printf("\033[1;31m[ERROR]\033[0m Data gambar tidak valid\n");
+        fclose(file);
+        return;
+    }
+    cinfo.input_components = 3;  // Assuming RGB format
+    cinfo.in_color_space = JCS_RGB;
+    int channels = 3;
+    
+    jpeg_set_defaults(&cinfo);
+
+    // Set quality to 100 to avoid compression
+    jpeg_set_quality(&cinfo, 100, TRUE);
+
+    jpeg_start_compress(&cinfo, TRUE);
+    
+    uint8_t* row_pointer[1];
+    while (cinfo.next_scanline < cinfo.image_height) {
+        row_pointer[0] = &im->data[cinfo.next_scanline * im->width * channels];
+        jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+    
+    jpeg_finish_compress(&cinfo);
+    jpeg_destroy_compress(&cinfo);
+    fclose(file);
+    
+    printf("\033[1;32m[INFO]\033[0m Gambar JPEG berhasil disimpan sebagai %s\n\n", filename);
+}
+
+void savePNG(char *path, Image *im) {
+
+    
+}
+
+void saveBMP(char *path, Image *im) {
+    FILE* file = fopen(path, "wb");
+    if (!file) {
+        printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar BMP\n");
+        return;
+    }
+
+    BMPHeader header;
+    BMPInfoHeader info;
+
+    header.type = 0x4D42; // 'BM'
+    header.size = sizeof(BMPHeader) + sizeof(BMPInfoHeader) + im->width * im->height * 3;
+    header.reserved1 = 0;
+    header.reserved2 = 0;
+    header.offset = sizeof(BMPHeader) + sizeof(BMPInfoHeader);
+
+    info.headerSize = sizeof(BMPInfoHeader);
+    info.width = im->width;
+    info.height = im->height;
+    info.planes = 1;
+    info.bitCount = 24; // RGB
+    info.compression = 0; // BI_RGB
+    info.imageSize = im->width * im->height * 3;
+    info.xPixelsPerMeter = 0;
+    info.yPixelsPerMeter = 0;
+    info.colorsUsed = 0;
+    info.colorsImportant = 0;
+
+    fwrite(&header, sizeof(BMPHeader), 1, file);
+    fwrite(&info, sizeof(BMPInfoHeader), 1, file);
+
+    for (int y = im->height - 1; y >= 0; y--) {
+        for (int x = 0; x < im->width; x++) {
+            int index = (y * im->width + x) * 3;
+            uint8_t bgr[3] = {im->data[index + 2], im->data[index + 1], im->data[index]}; // BMP uses BGR format
+            fwrite(bgr, sizeof(uint8_t), 3, file);
+        }
+        // Padding for each row to be a multiple of 4 bytes
+        uint8_t padding[3] = {0, 0, 0};
+        fwrite(padding, sizeof(uint8_t), (4 - (im->width * 3) % 4) % 4, file);
+    }
+
+    fclose(file);
+    printf("\033[1;32m[INFO]\033[0m Gambar BMP berhasil disimpan sebagai %s\n\n", path);
+}
+
+void make_crc_table() {
+    for (uint32_t n = 0; n < 256; n++) {
+        uint32_t c = n;
+        for (int k = 0; k < 8; k++) {
+            c = c & 1 ? 0xedb88320L ^ (c >> 1) : c >> 1;
+        }
+        crc_table[n] = c;
+    }
+    crc_table_computed = 1;
+}
+
+uint32_t update_crc(uint32_t crc, uint8_t *buf, int len) {
+    uint32_t c = crc;
+    if (!crc_table_computed)
+        make_crc_table();
+    for (int n = 0; n < len; n++) {
+        c = crc_table[(c ^ buf[n]) & 0xff] ^ (c >> 8);
+    }
+    return c;
+}
+
+uint32_t crc(uint8_t *buf, int len) {
+    return update_crc(0xffffffffL, buf, len) ^ 0xffffffffL;
+}
+
+void write32(FILE* f, uint32_t val) {
+    fputc((val >> 24) & 0xFF, f);
+    fputc((val >> 16) & 0xFF, f);
+    fputc((val >> 8) & 0xFF, f);
+    fputc(val & 0xFF, f);
+}
+
+void writeChunk(FILE* f, const char* type, uint8_t* data, uint32_t length) {
+    write32(f, length);
+    fwrite(type, 1, 4, f);
+    if (length > 0) fwrite(data, 1, length, f);
+
+    uint32_t crc_val = crc((uint8_t*)type, 4);
+    if (length > 0) crc_val = update_crc(crc_val, data, length);
+    write32(f, crc_val);
+}
+
+void savePNG(FILE* f, Image* im) {
+    // PNG signature
+    uint8_t sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
+    fwrite(sig, 1, 8, f);
+
+    // Write IHDR chunk
+    uint8_t ihdr[13];
+    ihdr[0] = (im->width >> 24) & 0xFF;
+    ihdr[1] = (im->width >> 16) & 0xFF;
+    ihdr[2] = (im->width >> 8) & 0xFF;
+    ihdr[3] = im->width & 0xFF;
+
+    ihdr[4] = (im->height >> 24) & 0xFF;
+    ihdr[5] = (im->height >> 16) & 0xFF;
+    ihdr[6] = (im->height >> 8) & 0xFF;
+    ihdr[7] = im->height & 0xFF;
+
+    ihdr[8] = 8;  // Bit depth
+    ihdr[9] = 2;  // Color type: RGB
+    ihdr[10] = 0; // Compression
+    ihdr[11] = 0; // Filter
+    ihdr[12] = 0; // Interlace
+
+    writeChunk(f, "IHDR", ihdr, 13);
+
+    // Prepare raw image data with filter bytes
+    size_t rawSize = (im->width * 3 + 1) * im->height;
+    uint8_t* rawData = (uint8_t*)malloc(rawSize);
+    for (int y = 0; y < im->height; y++) {
+        rawData[y * (im->width * 3 + 1)] = 0; // Filter type 0
+        memcpy(&rawData[y * (im->width * 3 + 1) + 1],
+               &im->data[y * im->width * 3],
+               im->width * 3);
+    }
+
+    // Compress with zlib
+    uLongf compSize = compressBound(rawSize);
+    uint8_t* compData = (uint8_t*)malloc(compSize);
+    if (compress2(compData, &compSize, rawData, rawSize, Z_BEST_COMPRESSION) != Z_OK) {
+        printf("\033[1;31m[ERROR]\033[0m PNG compression failed.\n");
+        free(rawData);
+        free(compData);
+        return;
+    }
+
+    writeChunk(f, "IDAT", compData, compSize);
+
+    // Write IEND
+    writeChunk(f, "IEND", NULL, 0);
+
+    free(rawData);
+    free(compData);
 }

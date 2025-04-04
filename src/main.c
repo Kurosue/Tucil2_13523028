@@ -69,7 +69,7 @@ void processImage(Image* im) {
 int main() 
 {
     inputHandler();
-    
+
     // Copy image ke res untuk membandingkan nanti
     res.width = image.width;
     res.height = image.height;
@@ -80,8 +80,7 @@ int main()
     processImage(&res);
 
     char fullpath[300] = "./";
-    saveJPEG(fullpath, &res);
-    saveJPEG(fullpath, &image);
+    saveImage(fullpath, &res);
 
     // Bersih bersih cihuy
     free(image.data);
