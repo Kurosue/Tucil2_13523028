@@ -16,7 +16,7 @@ extern int minSize;
 void chooseErrorMethod();
 
 /**
-* @brief Menghitung Variance dari blok data gambar
+* @brief Menghitung Eror dari blok gambar berdasarkan metode yang dipilih
 * @param data Pointer ke data gambar
 * @param width Lebar gambar
 * @param height Tinggi gambar
@@ -24,14 +24,8 @@ void chooseErrorMethod();
 * @param endX Koordinat X akhir blok
 * @param startY Koordinat Y awal blok
 * @param endY Koordinat Y akhir blok
-* @return Variance dari blok data gambar
+* @return Error value dari blok data gambar
 */
-double calculateVariance(uint8_t *data, int width, int height, int startX, int endX, int startY, int endY);
-
-
-double calculateMAD();
-double calculateMaxPixelDifferences();
-double calculateEntropy();
-double calculateSSI();
+double calculateError(uint8_t *data, int width, int height, int startX, int endX, int startY, int endY);
 
 #endif // ERRORCALCULATIONS_H

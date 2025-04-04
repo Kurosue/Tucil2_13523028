@@ -1,5 +1,6 @@
 // main.c
 // 13523028 - Muhammad Aditya Rahmadeni
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "header/image.h"
@@ -50,7 +51,6 @@ void inputHandler()
     chooseErrorMethod();
 }
 
-#include <stdint.h>
 
 
 void processImage(Image* im) {
