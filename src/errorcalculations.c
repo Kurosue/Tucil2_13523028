@@ -32,32 +32,37 @@ void chooseErrorMethod()
     }
 }
 
-double calculateVariance(uint8_t* data, int width, int height)
-{
-    uint64_t sumSqR = 0, sumSqG = 0, sumSqB = 0;
-    uint64_t sumR = 0, sumG = 0, sumB = 0;
-    int size = width * height;
+double calculateVariance(uint8_t *data, int width, int height, int startX, int endX, int startY, int endY) {
+    double mean[3] = {0, 0, 0};
+    double variance[3] = {0, 0, 0};
+    int count = (endX - startX) * (endY - startY);
 
-    for (int i = 0; i < size; i++) {
-        uint8_t r = data[i * 3];
-        uint8_t g = data[i * 3 + 1];
-        uint8_t b = data[i * 3 + 2];
+    if (count == 0) return 0.0;
 
-        sumR += r;
-        sumG += g;
-        sumB += b;
-        sumSqR += (uint64_t)r * r;
-        sumSqG += (uint64_t)g * g;
-        sumSqB += (uint64_t)b * b;
+    // First pass: Compute mean
+    for (int y = startY; y < endY; y++) {
+        for (int x = startX; x < endX; x++) {
+            int idx = (y * width + x) * 3;
+            for (int c = 0; c < 3; c++) {
+                mean[c] += data[idx + c];
+            }
+        }
     }
 
-    double meanR = (double)sumR / size;
-    double meanG = (double)sumG / size;
-    double meanB = (double)sumB / size;
+    for (int c = 0; c < 3; c++) {
+        mean[c] /= count;
+    }
 
-    double varR = (double)sumSqR / size - meanR * meanR;
-    double varG = (double)sumSqG / size - meanG * meanG;
-    double varB = (double)sumSqB / size - meanB * meanB;
+    // Second pass: Compute variance
+    for (int y = startY; y < endY; y++) {
+        for (int x = startX; x < endX; x++) {
+            int idx = (y * width + x) * 3;
+            for (int c = 0; c < 3; c++) {
+                double diff = data[idx + c] - mean[c];
+                variance[c] += diff * diff;
+            }
+        }
+    }
 
-    return (varR + varG + varB) / 3.0;
+    return (variance[0] + variance[1] + variance[2]) / (3.0 * count);
 }

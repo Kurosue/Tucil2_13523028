@@ -6,6 +6,7 @@
 uint16_t read16(FILE* file) {
     uint8_t bytes[2];
     fread(bytes, 1, 2, file);
+
     return (bytes[0] << 8) | bytes[1];
 }
 
@@ -40,12 +41,12 @@ void extractJPEG(FILE* file, Image* im) {
     jpeg_read_header(&cinfo, TRUE);
     jpeg_start_decompress(&cinfo);
     
-    im->width = (uint8_t)cinfo.output_width;
-    im->height = (uint8_t)cinfo.output_height;
-    int channels = cinfo.output_components;
+    im->width = (uint32_t)cinfo.output_width;
+    im->height = (uint32_t)cinfo.output_height;
+    int channels = 3;
     
     printf("\033[1;32m[INFO]\033[0m Dimensi Gambar JPEG: \033[1;34m%d x %d\033[0m\n", im->width, im->height);
-    
+      // Store channels
     im->data = (uint8_t*)malloc(im->width * im->height * channels);
     uint8_t* row_pointer[1];
     
@@ -61,31 +62,47 @@ void extractJPEG(FILE* file, Image* im) {
     printf("\033[1;32m[INFO]\033[0m Gambar JPEG berhasil diekstrak\n\n");
 }
 
-void saveJPEG(const char* filename, Image* im) {
+void saveJPEG(char* path, Image* im) {
     struct jpeg_compress_struct cinfo;
     struct jpeg_error_mgr jerr;
+
+    // Minta input nama file
+    printf("\033[1;33m[Input]\033[0m Masukkan nama file untuk menyimpan gambar JPEG (DENGAN ekstensi): ");
+    char filename[100];
+    scanf("%99s", filename); // Limit input to avoid overflow
+    snprintf(path, 256, "%s%s", path, filename); // Safely concatenate strings
+    printf("\n\n\033[1;32m[INFO]\033[0m Menyimpan gambar JPEG sebagai %s\n", path);
     
     FILE* file = fopen(filename, "wb");
     if (!file) {
         printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar JPEG\n");
         return;
     }
-    
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_compress(&cinfo);
     jpeg_stdio_dest(&cinfo, file);
     
     cinfo.image_width = im->width;
     cinfo.image_height = im->height;
-    cinfo.input_components = 3;  // RGB
+    if (im->data == NULL) {
+        printf("\033[1;31m[ERROR]\033[0m Data gambar tidak valid\n");
+        fclose(file);
+        return;
+    }
+    cinfo.input_components = 3;  // Assuming RGB format
     cinfo.in_color_space = JCS_RGB;
+    int channels = 3;
     
     jpeg_set_defaults(&cinfo);
+
+    // Set quality to 100 to avoid compression
+    jpeg_set_quality(&cinfo, 100, TRUE);
+
     jpeg_start_compress(&cinfo, TRUE);
     
     uint8_t* row_pointer[1];
     while (cinfo.next_scanline < cinfo.image_height) {
-        row_pointer[0] = &im->data[cinfo.next_scanline * im->width * 3];
+        row_pointer[0] = &im->data[cinfo.next_scanline * im->width * channels];
         jpeg_write_scanlines(&cinfo, row_pointer, 1);
     }
     
@@ -229,4 +246,51 @@ void extractImage(FILE* file, struct Image* im) {
             printf("\033[1;31m[ERROR]\033[0m File bukan bertipe gambar (.JPG/.JPEG, .PNG, .BMP)\n");
             break;
     }
+}
+
+void normalizeSubImage(Image* im, int startX, int endX, int startY, int endY) {
+    uint8_t minVal[3] = {255, 255, 255}, maxVal[3] = {0, 0, 0};
+
+    // First pass: Get min/max per channel
+    for (int y = startY; y < endY; y++) {
+        int baseIdx = (y * im->width + startX) * 3;  // Move row-wise
+        for (int x = startX; x < endX; x++, baseIdx += 3) {
+            for (int c = 0; c < 3; c++) {
+                uint8_t val = im->data[baseIdx + c];
+                if (val < minVal[c]) minVal[c] = val;
+                if (val > maxVal[c]) maxVal[c] = val;
+            }
+        }
+    }
+
+    // If all values are the same, no need to normalize
+    if (minVal[0] == maxVal[0] && minVal[1] == maxVal[1] && minVal[2] == maxVal[2]) return;
+
+    // Second pass: Apply normalization
+    for (int c = 0; c < 3; c++) {
+        float scale = (maxVal[c] == minVal[c]) ? 1.0f : 255.0f / (maxVal[c] - minVal[c]);
+        for (int y = startY; y < endY; y++) {
+            int baseIdx = (y * im->width + startX) * 3;
+            for (int x = startX; x < endX; x++, baseIdx += 3) {
+                im->data[baseIdx + c] = (uint8_t)((im->data[baseIdx + c] - minVal[c]) * scale);
+            }
+        }
+    }
+}
+
+
+void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize) {
+    double error = calculateVariance(im->data, im->width, im->height, startX, endX, startY, endY);
+    if ((endX - startX) <= minSize || (endY - startY) <= minSize || error <= threshold) {
+        normalizeSubImage(im, startX, endX, startY, endY);
+        return;
+    }
+
+    int midX = (startX + endX) / 2;
+    int midY = (startY + endY) / 2;
+
+    divideNConquer(im, threshold, startX, midX, startY, midY, minSize); 
+    divideNConquer(im, threshold, midX+1, endX, startY, midY, minSize); 
+    divideNConquer(im, threshold, startX, midX, midY+1, endY, minSize); 
+    divideNConquer(im, threshold, midX+1, endX, midY+1, endY, minSize); 
 }

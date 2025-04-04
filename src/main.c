@@ -4,6 +4,7 @@
 #include <string.h>
 #include "header/image.h"
 #include "header/errorcalculations.h"
+#include <time.h>
 
 char* absolPath;
 Image image;
@@ -15,113 +16,74 @@ void inputHandler()
     while(true)
     {
         printf("Masukkan nama file gambar yang ingin diproses ( \033[1;33mCATATAN : PASTIKAN FILE ADA DALAM FOLDER TEST\033[0m ) \n> ");
-        char* fileName = (char*)malloc(100 * sizeof(char));
-        absolPath = (char*)malloc(200 * sizeof(char));
+        char* fileName = (char*)malloc(300 * sizeof(char));
+        absolPath = (char*)malloc(500 * sizeof(char));
 
         strcpy(absolPath, "./test/");
-        scanf("%s", fileName);
+        scanf("%300s", fileName);
         strcat(absolPath, fileName);
         
         FILE* file = fopen(absolPath, "r");
         if(file == NULL)
         {
-            printf("\033[1;31m[ERROR]\033[0m File pada \033[1;34m%s\033[0m tidak ditemukan, silahkan coba lagi.\n", absolPath);
-            continue;
+            file = fopen(fileName, "r");
+            if(file == NULL)
+            {
+                printf("\033[1;31m[ERROR]\033[0m File pada \033[1;34m%s\033[0m ataupun \033[1;34m%s\033[0m tidak ditemukan, silahkan coba lagi.\n", fileName, absolPath);
+                continue;
+            }
+            else
+            {
+                printf("\033[1;32m[Success]\033[0m File ditemukan !\n\n");
+                extractImage(file, &image);
+                break;
+            }
         }
         else
         {
-            printf("File ditemukan !\n\n");
+            printf("\033[1;32m[Success]\033[0m File ditemukan !\n\n");
             extractImage(file, &image);
             break;
-        }   
+        } 
     }
-
     // [Input] Metode perhitungan error & Threshold
     chooseErrorMethod();
 }
-void normalizeImage(Image* im)
-{
-    for (int i = 0; i < im->width * im->height; i++)
-    {
-        uint32_t pixel = im->data[i];
-        uint8_t r = (pixel >> 16) & 0xFF;
-        uint8_t g = (pixel >> 8) & 0xFF;
-        uint8_t b = pixel & 0xFF;
 
-        // Normalize the pixel values
-        r = (r > 255) ? 255 : r;
-        g = (g > 255) ? 255 : g;
-        b = (b > 255) ? 255 : b;
+#include <stdint.h>
 
-        im->data[i] = (r << 16) | (g << 8) | b;
-    }
+
+void processImage(Image* im) {
+    printf("\033[1;32m[INFO]\033[0m Gambar akan mulai diproses...\n\n");
+    
+    // Timer Mulai
+    clock_t start = clock();
+    divideNConquer(im, threshold, 0, im->width, 0, im->height, minSize);
+    clock_t end = clock();
+    // Timer Selesai
+
+    double timeTaken = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("\033[1;32m[INFO]\033[0m Gambar berhasil diproses dalam waktu \033[1;34m%.2f detik\033[0m\n", timeTaken);
 }
 
-void divideNConquer(Image im, double threshold, Image* res)
-{
-    double error = calculateVariance(im.data, im.width, im.height);
-
-    if (error > threshold)
-    {
-        int newWidth = im.width / 2;
-        int newHeight = im.height / 2;
-
-        if (newWidth == 0 || newHeight == 0) return;
-
-        Image subImages[4];
-
-        for (int i = 0; i < 4; i++)
-        {
-            subImages[i].width = newWidth;
-            subImages[i].height = newHeight;
-            subImages[i].data = (uint8_t*)malloc(newWidth * newHeight * sizeof(uint8_t));
-        }
-
-        // Copy pixels into sub-images
-        for (int y = 0; y < im.height; y++)
-        {
-            for (int x = 0; x < im.width; x++)
-            {
-                int subIndex = (y >= newHeight) * 2 + (x >= newWidth);
-                int newX = x % newWidth;
-                int newY = y % newHeight;
-                subImages[subIndex].data[newY * newWidth + newX] = im.data[y * im.width + x];
-            }
-        }
-
-        // Recursive calls
-        for (int i = 0; i < 4; i++)
-        {
-            divideNConquer(subImages[i], threshold, res);
-            free(subImages[i].data);
-        }
-    }
-    else
-    {
-        // Store the result into `res`
-        memcpy(res->data, im.data, im.width * im.height * sizeof(uint8_t));
-        normalizeImage(res);
-    }
-}
-
-
-// Updated `main()` function to store the result
 int main() 
 {
-    // Initialize & prepare data
     inputHandler();
-
-    // Allocate memory for the result image
+    
+    // Copy image ke res untuk membandingkan nanti
     res.width = image.width;
     res.height = image.height;
-    res.data = (uint8_t*)malloc(image.width * image.height * sizeof(uint8_t));
+    res.data = (uint8_t*)malloc(res.width * res.height * 3);
+    memcpy(res.data, image.data, res.width * res.height * 3);
+    
+    // Proses gambar
+    processImage(&res);
 
-    divideNConquer(image, 50.0, &res);
+    char fullpath[300] = "./";
+    saveJPEG(fullpath, &res);
+    saveJPEG(fullpath, &image);
 
-    // Save image
-    saveJPEG("test/output.jpeg", &res);
-    printf("\033[1;32m[INFO]\033[0m Gambar berhasil disimpan sebagai output.jpeg\n");
-    // Free allocated memory
+    // Bersih bersih cihuy
     free(image.data);
     free(res.data);
 }

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>     
+#include <math.h>
 
 extern int choice;
 extern int threshold;
@@ -19,8 +20,13 @@ void chooseErrorMethod();
 * @param data Pointer ke data gambar
 * @param width Lebar gambar
 * @param height Tinggi gambar
+* @param startX Koordinat X awal blok
+* @param endX Koordinat X akhir blok
+* @param startY Koordinat Y awal blok
+* @param endY Koordinat Y akhir blok
+* @return Variance dari blok data gambar
 */
-double calculateVariance(uint8_t* data, int width, int height);
+double calculateVariance(uint8_t *data, int width, int height, int startX, int endX, int startY, int endY);
 
 
 double calculateMAD();

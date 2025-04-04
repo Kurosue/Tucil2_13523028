@@ -89,10 +89,10 @@ void extractPNG(FILE* file, Image* im);
 /**
  * @brief Menyimpan gambar ke file JPEG
  * 
- * @param filename Nama file untuk menyimpan gambar
+ * @param path Nama file untuk menyimpan gambar
  * @param im Pointer ke struktur Image yang akan disimpan
  */
-void saveJPEG(const char* filename, Image* im);
+void saveJPEG(char* path, Image* im);
 
 /**
  * @brief Mengambil format gambar dari file
@@ -102,5 +102,31 @@ void saveJPEG(const char* filename, Image* im);
  */
 ImageFormat detectImageFormat(FILE* file);
 
+/**
+ * @brief Implementasi divide and conquer dari Quadtree
+ * @param im Pointer ke struktur Image yang akan diproses
+ * @param threshold Nilai threshold untuk pemisahan
+ * @param startX Koordinat X awal
+ * @param endX Koordinat X akhir
+ * @param startY Koordinat Y awal
+ * @param endY Koordinat Y akhir
+ * @param minSize Ukuran minimum untuk pemisahan
+ * @return void
+ * @note Fungsi ini akan membagi gambar menjadi sub-gambar berdasarkan threshold dan ukuran minimum
+ */
+void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize);
+
+/**
+ * @brief Mengnormalisasi sub blok gambar
+ * 
+ * @param im Pointer ke struktur Image yang akan diproses
+ * @param startX Koordinat X awal
+ * @param endX Koordinat X akhir
+ * @param startY Koordinat Y awal
+ * @param endY Koordinat Y akhir
+ * @return void
+ * @note Fungsi ini akan mengnormalisasi sub blok gambar berdasarkan nilai minimum dan maksimum
+ */
+void normalizeSubImage(Image* im, int startX, int endX, int startY, int endY);
 
 #endif // IMAGE_H
