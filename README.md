@@ -39,7 +39,7 @@ chmod +x build.sh
 
 Untuk Windows:
 ```shell
-
+build.bat
 ```
 
 ---
