@@ -248,7 +248,7 @@ void saveJPEG(char* path, Image* im) {
     struct jpeg_error_mgr jerr;
 
     // Minta input nama file
-    printf("\033[1;33m[Input]\033[0m Masukkan nama file atau path lengkap file untuk menyimpan gambar BMP (DENGAN ekstensi) [ CATATAN : Jika hanya memberikan nama file maka file disimpan didalam folder test]: ");
+    printf("\033[1;33m[Input]\033[0m Masukkan nama file atau path lengkap file untuk menyimpan gambar JPG (DENGAN ekstensi) [ CATATAN : Jika hanya memberikan nama file maka file disimpan didalam folder test]: ");
     char filename[100];
     scanf("%99s", filename); // Limit input to avoid overflow
     snprintf(path, 256, "%s%s", path, filename); // Safely concatenate strings

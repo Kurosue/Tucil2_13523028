@@ -63,9 +63,12 @@ void processImage(Image* im) {
     // Timer Selesai
 
     double timeTaken = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("\033[1;32m[INFO]\033[0m Ukuran Original Gambar: \033[1;34m%d\033[0m\n", im->height * im->width * 3);
+    printf("\033[1;32m[INFO]\033[0m Kedalaman pohon: \033[1;34m%d\033[0m\n", nodeCount * 19);
+    printf("\033[1;32m[INFO]\033[0m Kompresi: \033[1;34m%.2f\033[0m\n", 100.0 * (1.0 - (double)(nodeCount * 19)) / (im->height * im->width * 3));
     printf("\033[1;32m[INFO]\033[0m Gambar berhasil diproses dalam waktu \033[1;34m%.2f detik\033[0m\n", timeTaken);
-    printf("\033[1;32m[INFO]\033[0m Kedalaman pohon: %d\n", maxDepth);
-    printf("\033[1;32m[INFO]\033[0m Banyak simpul pada pohon: %d\n", nodeCount);
+    printf("\033[1;32m[INFO]\033[0m Kedalaman pohon: \033[1;34m%d\033[0m\n", maxDepth);
+    printf("\033[1;32m[INFO]\033[0m Banyak simpul pada pohon: \033[1;34m%d\033[0m\n", nodeCount);
 }
 
 int main() 
