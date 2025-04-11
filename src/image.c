@@ -16,6 +16,10 @@ uint32_t read32(FILE* file) {
     return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
 }
 
+ImageFormat format;
+uint32_t crc_table[256];
+int crc_table_computed = 0;
+
 ImageFormat detectImageFormat(FILE* file) {
     uint8_t signature[8];
     fread(signature, 1, 8, file);
@@ -80,6 +84,38 @@ void paethFilter(uint8_t* scanline, uint8_t* prevScanline, int stride, int filte
     }
 }
 
+void applyPNGFilter(uint8_t* scanline, uint8_t* prevScanline, int stride, int filterType) {
+    switch (filterType) {
+        case 0: // None
+            break;
+        case 1: // Sub
+            for (int i = 3; i < stride; i++) {
+                scanline[i] += scanline[i - 3];
+            }
+            break;
+        case 2: // Up
+            if (prevScanline) {
+                for (int i = 0; i < stride; i++) {
+                    scanline[i] += prevScanline[i];
+                }
+            }
+            break;
+        case 3: // Average
+            for (int i = 0; i < stride; i++) {
+                uint8_t left = (i >= 3) ? scanline[i - 3] : 0;
+                uint8_t up = (prevScanline) ? prevScanline[i] : 0;
+                scanline[i] += (left + up) / 2;
+            }
+            break;
+        case 4: // Paeth
+            paethFilter(scanline, prevScanline, stride, filterType);
+            break;
+        default:
+            printf("[ERROR] Unknown PNG filter type: %d\n", filterType);
+            break;
+    }
+}
+
 void extractPNG(FILE* file, Image* im) {
     fseek(file, 8, SEEK_SET);
     char chunkType[5];
@@ -93,8 +129,8 @@ void extractPNG(FILE* file, Image* im) {
         chunkType[4] = '\0';
 
         if (strcmp(chunkType, "IHDR") == 0) {
-            im->width = (uint8_t)read32(file);
-            im->height = (uint8_t)read32(file);
+            im->width = read32(file);
+            im->height = read32(file);
             fseek(file, 5, SEEK_CUR);
         } else if (strcmp(chunkType, "IDAT") == 0) {
             compressedData = (uint8_t*)realloc(compressedData, compressedSize + chunkSize);
@@ -107,6 +143,7 @@ void extractPNG(FILE* file, Image* im) {
         }
         fseek(file, 4, SEEK_CUR);
     }
+    printf("\033[1;32m[INFO]\033[0m Dimensi Gambar PNG: \033[1;34m%d x %d\033[0m\n", im->width, im->height);
     
     uint8_t* decompressedData = (uint8_t*)malloc(im->width * im->height * 3 + im->height);
     uLongf decompressedSize = im->width * im->height * 3 + im->height;
@@ -117,25 +154,31 @@ void extractPNG(FILE* file, Image* im) {
         return;
     }
     
-    im->data = (uint8_t*)malloc(im->width * im->height * 3); // Allocate memory for RGB data
     int stride = im->width * 3;
     uint8_t* prevScanline = NULL;
+    im->data = (uint8_t*)malloc(im->width * im->height * 3);
+    if (!im->data) {
+        printf("\033[1;31m[ERROR]\033[0m Gagal mengalokasikan memori untuk data gambar\n");
+        free(compressedData);
+        free(decompressedData);
+        exit(0);
+    }
+
     for (int y = 0; y < im->height; y++) {
         int filterType = decompressedData[y * (stride + 1)];
         uint8_t* scanline = &decompressedData[y * (stride + 1) + 1];
-        if (filterType == 4) {
-            paethFilter(scanline, prevScanline, stride, filterType);
-        }
+        
+        applyPNGFilter(scanline, prevScanline, stride, filterType);
+
         for (int x = 0; x < im->width; x++) {
-            uint8_t r = scanline[x * 3];
-            uint8_t g = scanline[x * 3 + 1];
-            uint8_t b = scanline[x * 3 + 2];
-            im->data[(y * im->width + x) * 3] = r;
-            im->data[(y * im->width + x) * 3 + 1] = g;
-            im->data[(y * im->width + x) * 3 + 2] = b;
+            int baseIdx = (y * im->width + x) * 3;
+            im->data[baseIdx]     = scanline[x * 3];     // R
+            im->data[baseIdx + 1] = scanline[x * 3 + 1]; // G
+            im->data[baseIdx + 2] = scanline[x * 3 + 2]; // B
         }
-        prevScanline = scanline;
-    }
+
+    prevScanline = scanline;
+}
     
     free(compressedData);
     free(decompressedData);
@@ -148,13 +191,13 @@ void extractBMP(FILE* file, struct Image* im) {
     fread(&header, sizeof(BMPHeader), 1, file);
     fread(&info, sizeof(BMPInfoHeader), 1, file);
     
-    if (header.type != 0x4D42) {
-        printf("Not a valid BMP file!\n");
+    im->width = (uint32_t)info.width;
+    im->height = (uint32_t)abs(info.height);
+    printf("\033[1;32m[INFO]\033[0m Dimensi Gambar BMP: \033[1;34m%d x %d\033[0m\n", im->width, im->height);
+    if (info.bitCount != 24) {
+        printf("\033[1;31m[ERROR]\033[0m Format BMP tidak didukung (hanya 24-bit RGB)\n");
         return;
     }
-    
-    im->width = (uint8_t)info.width;
-    im->height = (uint8_t)abs(info.height);
     
     fseek(file, header.offset, SEEK_SET);
     
@@ -198,85 +241,24 @@ void extractImage(FILE* file, struct Image* im) {
     }
 }
 
-void saveImage(const char* path, Image *im) {
-    switch (format) {
-        case IMAGE_JPEG:
-            saveJPEG(path, im);
-            break;
-        case IMAGE_PNG:
-            // Implement PNG saving function
-            break;
-        case IMAGE_BMP:
-            // Implement BMP saving function
-            break;
-        default:
-            printf("\033[1;31m[ERROR]\033[0m Format gambar tidak didukung untuk penyimpanan\n");
-            break;
-    }
-}
 
-void normalizeSubImage(Image* im, int startX, int endX, int startY, int endY) {
-    uint8_t minVal[3] = {255, 255, 255}, maxVal[3] = {0, 0, 0};
-
-    // First pass: Get min/max per channel
-    for (int y = startY; y < endY; y++) {
-        int baseIdx = (y * im->width + startX) * 3;  // Move row-wise
-        for (int x = startX; x < endX; x++, baseIdx += 3) {
-            for (int c = 0; c < 3; c++) {
-                uint8_t val = im->data[baseIdx + c];
-                if (val < minVal[c]) minVal[c] = val;
-                if (val > maxVal[c]) maxVal[c] = val;
-            }
-        }
-    }
-
-    // If all values are the same, no need to normalize
-    if (minVal[0] == maxVal[0] && minVal[1] == maxVal[1] && minVal[2] == maxVal[2]) return;
-
-    // Second pass: Apply normalization
-    for (int c = 0; c < 3; c++) {
-        float scale = (maxVal[c] == minVal[c]) ? 1.0f : 255.0f / (maxVal[c] - minVal[c]);
-        for (int y = startY; y < endY; y++) {
-            int baseIdx = (y * im->width + startX) * 3;
-            for (int x = startX; x < endX; x++, baseIdx += 3) {
-                im->data[baseIdx + c] = (uint8_t)((im->data[baseIdx + c] - minVal[c]) * scale);
-            }
-        }
-    }
-}
-
-
-void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize) {
-    double error = calculateVariance(im->data, im->width, im->height, startX, endX, startY, endY);
-    if ((endX - startX) <= minSize || (endY - startY) <= minSize || error <= threshold) {
-        normalizeSubImage(im, startX, endX, startY, endY);
-        return;
-    }
-
-    int midX = (startX + endX) / 2;
-    int midY = (startY + endY) / 2;
-
-    divideNConquer(im, threshold, startX, midX, startY, midY, minSize); 
-    divideNConquer(im, threshold, midX+1, endX, startY, midY, minSize); 
-    divideNConquer(im, threshold, startX, midX, midY+1, endY, minSize); 
-    divideNConquer(im, threshold, midX+1, endX, midY+1, endY, minSize); 
-}
 
 void saveJPEG(char* path, Image* im) {
     struct jpeg_compress_struct cinfo;
     struct jpeg_error_mgr jerr;
 
     // Minta input nama file
-    printf("\033[1;33m[Input]\033[0m Masukkan nama file untuk menyimpan gambar JPEG (DENGAN ekstensi): ");
+    printf("\033[1;33m[Input]\033[0m Masukkan nama file atau path lengkap file untuk menyimpan gambar BMP (DENGAN ekstensi) [ CATATAN : Jika hanya memberikan nama file maka file disimpan didalam folder test]: ");
     char filename[100];
     scanf("%99s", filename); // Limit input to avoid overflow
     snprintf(path, 256, "%s%s", path, filename); // Safely concatenate strings
-    printf("\n\n\033[1;32m[INFO]\033[0m Menyimpan gambar JPEG sebagai %s\n", path);
-    
-    FILE* file = fopen(filename, "wb");
+    FILE* file = fopen(path, "wb");
     if (!file) {
+        FILE* file = fopen(filename, "wb");
+        if(!file){
         printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar JPEG\n");
         return;
+        }
     }
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_compress(&cinfo);
@@ -313,16 +295,19 @@ void saveJPEG(char* path, Image* im) {
     printf("\033[1;32m[INFO]\033[0m Gambar JPEG berhasil disimpan sebagai %s\n\n", filename);
 }
 
-void savePNG(char *path, Image *im) {
-
-    
-}
 
 void saveBMP(char *path, Image *im) {
+    printf("\033[1;33m[Input]\033[0m Masukkan nama file atau path lengkap file untuk menyimpan gambar BMP (DENGAN ekstensi) [ CATATAN : Jika hanya memberikan nama file maka file disimpan didalam folder test]: ");
+    char filename[100];
+    scanf("%99s", filename); // Limit input to avoid overflow
+    snprintf(path, 256, "%s%s", path, filename); // Safely concatenate strings
     FILE* file = fopen(path, "wb");
     if (!file) {
-        printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar BMP\n");
-        return;
+        FILE* file = fopen(filename, "wb");
+        if(!file){
+            printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar BMP\n");
+            return;
+        }
     }
 
     BMPHeader header;
@@ -349,7 +334,7 @@ void saveBMP(char *path, Image *im) {
     fwrite(&header, sizeof(BMPHeader), 1, file);
     fwrite(&info, sizeof(BMPInfoHeader), 1, file);
 
-    for (int y = im->height - 1; y >= 0; y--) {
+    for (int y = 0; y < im->height; y++) {
         for (int x = 0; x < im->width; x++) {
             int index = (y * im->width + x) * 3;
             uint8_t bgr[3] = {im->data[index + 2], im->data[index + 1], im->data[index]}; // BMP uses BGR format
@@ -406,12 +391,26 @@ void writeChunk(FILE* f, const char* type, uint8_t* data, uint32_t length) {
     write32(f, crc_val);
 }
 
-void savePNG(FILE* f, Image* im) {
+
+void savePNG(char* path, Image* im) {
+    printf("\033[1;33m[Input]\033[0m Masukkan nama file atau path lengkap file untuk menyimpan gambar PNG (DENGAN ekstensi) [ CATATAN : Jika hanya memberikan nama file maka file disimpan didalam folder test]: ");
+    char filename[100];
+    scanf("%99s", filename); // Limit input to avoid overflow
+    snprintf(path, 256, "%s%s", path, filename); // Safely concatenate strings
+    FILE* f = fopen(path, "wb");
+    if (!f) {
+        FILE* f = fopen(filename, "wb");
+        if(!f){
+            printf("\033[1;31m[ERROR]\033[0m Gagal menyimpan gambar BMP\n");
+            return;
+        }
+    }
+
     // PNG signature
     uint8_t sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
     fwrite(sig, 1, 8, f);
 
-    // Write IHDR chunk
+    // IHDR 
     uint8_t ihdr[13];
     ihdr[0] = (im->width >> 24) & 0xFF;
     ihdr[1] = (im->width >> 16) & 0xFF;
@@ -431,14 +430,13 @@ void savePNG(FILE* f, Image* im) {
 
     writeChunk(f, "IHDR", ihdr, 13);
 
-    // Prepare raw image data with filter bytes
     size_t rawSize = (im->width * 3 + 1) * im->height;
     uint8_t* rawData = (uint8_t*)malloc(rawSize);
     for (int y = 0; y < im->height; y++) {
         rawData[y * (im->width * 3 + 1)] = 0; // Filter type 0
         memcpy(&rawData[y * (im->width * 3 + 1) + 1],
-               &im->data[y * im->width * 3],
-               im->width * 3);
+                &im->data[y * im->width * 3],
+                im->width * 3);
     }
 
     // Compress with zlib
@@ -448,6 +446,7 @@ void savePNG(FILE* f, Image* im) {
         printf("\033[1;31m[ERROR]\033[0m PNG compression failed.\n");
         free(rawData);
         free(compData);
+        fclose(f);
         return;
     }
 
@@ -458,4 +457,24 @@ void savePNG(FILE* f, Image* im) {
 
     free(rawData);
     free(compData);
+    fclose(f);
+
+    printf("\033[1;32m[INFO]\033[0m Gambar PNG berhasil disimpan sebagai %s\n\n", path);
+}
+
+void saveImage(char* path, Image *im) {
+    switch (format) {
+        case IMAGE_JPEG:
+            saveJPEG(path, im);
+            break;
+        case IMAGE_PNG:
+            savePNG(path, im);
+            break;
+        case IMAGE_BMP:
+            saveBMP(path, im);
+            break;
+        default:
+            printf("\033[1;31m[ERROR]\033[0m Format gambar tidak didukung untuk penyimpanan\n");
+            break;
+    }
 }

@@ -13,7 +13,6 @@
 #include <math.h>
 #include <jpeglib.h>
 
-ImageFormat format;
 
 // enum untuk mempermudah pengelompokan tipe file
 typedef enum {
@@ -22,6 +21,8 @@ typedef enum {
     IMAGE_PNG,
     IMAGE_BMP
 } ImageFormat;
+
+extern ImageFormat format;
 
 // Strcut dari image yang akan diproses
 typedef struct Image {
@@ -56,8 +57,8 @@ typedef struct {
 #pragma pack(pop)
 
 // untuk save png file
-uint32_t crc_table[256];
-int crc_table_computed = 0;
+extern uint32_t crc_table[256];
+extern int crc_table_computed;
 
 /**
  * @brief Membaca 16 bit dari file
@@ -68,33 +69,6 @@ int crc_table_computed = 0;
 void extractImage(FILE* file, Image* im);
 
 /**
- * @brief Implementasi divide and conquer dari Quadtree
- * @param im Pointer ke struktur Image yang akan diproses
- * @param threshold Nilai threshold untuk pemisahan
- * @param startX Koordinat X awal
- * @param endX Koordinat X akhir
- * @param startY Koordinat Y awal
- * @param endY Koordinat Y akhir
- * @param minSize Ukuran minimum untuk pemisahan
- * @return void
- * @note Fungsi ini akan membagi gambar menjadi sub-gambar berdasarkan threshold dan ukuran minimum
- */
-void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize);
-
-/**
- * @brief Mengnormalisasi sub blok gambar
- * 
- * @param im Pointer ke struktur Image yang akan diproses
- * @param startX Koordinat X awal
- * @param endX Koordinat X akhir
- * @param startY Koordinat Y awal
- * @param endY Koordinat Y akhir
- * @return void
- * @note Fungsi ini akan mengnormalisasi sub blok gambar berdasarkan nilai minimum dan maksimum
- */
-void normalizeSubImage(Image* im, int startX, int endX, int startY, int endY);
-
-/**
  * @brief Menyimpan gambar ke file
  * 
  * @param path Path file untuk menyimpan gambar
@@ -103,6 +77,6 @@ void normalizeSubImage(Image* im, int startX, int endX, int startY, int endY);
  * @note Fungsi ini akan menyimpan gambar ke file dengan format yang sesuai
  * @note Format yang didukung: JPEG, PNG, BMP
  */
-void saveImage(const char* path, Image *im);
+void saveImage(char* path, Image *im);
 
 #endif // IMAGE_H

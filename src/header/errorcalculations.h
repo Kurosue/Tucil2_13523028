@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>     
 #include <math.h>
+#include <stdlib.h>
 
 extern int choice;
 extern int threshold;

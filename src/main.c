@@ -1,10 +1,10 @@
 // main.c
 // 13523028 - Muhammad Aditya Rahmadeni
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "header/image.h"
-#include "header/errorcalculations.h"
+#include "header/quadtree.h"
 #include <time.h>
 
 char* absolPath;
@@ -16,7 +16,7 @@ void inputHandler()
     // [Input] Absolut Path dari file
     while(true)
     {
-        printf("Masukkan nama file gambar yang ingin diproses ( \033[1;33mCATATAN : PASTIKAN FILE ADA DALAM FOLDER TEST\033[0m ) \n> ");
+        printf("\033[1;33m[Input]\033[0m Masukkan nama file gambar yang ingin diproses ( \033[1;33mCATATAN : PASTIKAN FILE ADA DALAM FOLDER TEST ATAU PATH LENGKAP FILE ADA\033[0m ) \n> ");
         char* fileName = (char*)malloc(300 * sizeof(char));
         absolPath = (char*)malloc(500 * sizeof(char));
 
@@ -42,7 +42,7 @@ void inputHandler()
         }
         else
         {
-            printf("\033[1;32m[Success]\033[0m File ditemukan !\n\n");
+            printf("\n\033[1;32m[Success]\033[0m File ditemukan !\n\n");
             extractImage(file, &image);
             break;
         } 
@@ -79,7 +79,7 @@ int main()
     // Proses gambar
     processImage(&res);
 
-    char fullpath[300] = "./";
+    char fullpath[300] = "./test/";
     saveImage(fullpath, &res);
 
     // Bersih bersih cihuy
