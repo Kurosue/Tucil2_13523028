@@ -10,6 +10,9 @@
 #include "image.h"
 #include "errorcalculations.h"
 
+extern int maxDepth;
+extern int nodeCount;
+
 /**
  * @brief Implementasi divide and conquer dari Quadtree
  * @param im Pointer ke struktur Image yang akan diproses
@@ -22,7 +25,7 @@
  * @return void
  * @note Fungsi ini akan membagi gambar menjadi sub-gambar berdasarkan threshold dan ukuran minimum
  */
-void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize);
+void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize, int depth);
 
 /**
  * @brief Mengnormalisasi sub blok gambar

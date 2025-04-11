@@ -1,5 +1,8 @@
 #include "header/quadtree.h"
 
+int maxDepth = 0;
+int nodeCount = 0;
+
 void normalizeSubImage(Image* im, int startX, int endX, int startY, int endY) {
     uint64_t sum[3] = {0, 0, 0};
     int total = 0;
@@ -31,7 +34,15 @@ void normalizeSubImage(Image* im, int startX, int endX, int startY, int endY) {
 }
 
 
-void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize) {
+void divideNConquer(Image* im, double threshold, int startX, int endX, int startY, int endY, int minSize, int depth) {
+    if(depth > maxDepth)
+    {
+        maxDepth = depth;
+    }
+
+    depth++;
+    nodeCount++;
+    
     // Hitung eror sesuai metoed yang sudah dipilih
     double error = calculateError(im->data, im->width, im->height, startX, endX, startY, endY);
 
@@ -47,8 +58,8 @@ void divideNConquer(Image* im, double threshold, int startX, int endX, int start
     int midY = (startY + endY) / 2;
 
     // Buat "Anak" 
-    divideNConquer(im, threshold, startX, midX, startY, midY, minSize); 
-    divideNConquer(im, threshold, midX+1, endX, startY, midY, minSize); 
-    divideNConquer(im, threshold, startX, midX, midY+1, endY, minSize); 
-    divideNConquer(im, threshold, midX+1, endX, midY+1, endY, minSize); 
+    divideNConquer(im, threshold, startX, midX, startY, midY, minSize, depth+1); 
+    divideNConquer(im, threshold, midX+1, endX, startY, midY, minSize, depth+1); 
+    divideNConquer(im, threshold, startX, midX, midY+1, endY, minSize, depth+1); 
+    divideNConquer(im, threshold, midX+1, endX, midY+1, endY, minSize, depth+1); 
 }

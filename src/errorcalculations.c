@@ -4,6 +4,44 @@ int choice;
 int threshold;
 int minSize;
 
+bool validateThreshold(int errorChoice, double inputThreshold) {
+    double lowThreshold, highThreshold;
+
+    switch (errorChoice) {
+        case 1:  // Variance
+            lowThreshold = 0;
+            highThreshold = 16256;
+            break;
+        case 2:  // MAD
+            lowThreshold = 0;
+            highThreshold = 127;
+            break;
+        case 3:  // Max Pixel Difference
+            lowThreshold = 0;
+            highThreshold = 255;
+            break;
+        case 4:  // Entropy
+            lowThreshold = 0;
+            highThreshold = 18;
+            break;
+        case 5:  // SSIM
+            lowThreshold = 0;
+            highThreshold = 1;
+            break;
+        default:
+            lowThreshold = 0;
+            highThreshold = 100;
+            break;
+    }
+
+    if (inputThreshold < lowThreshold || inputThreshold > highThreshold) {
+        printf("\033[1;31m[ERROR]\033[0m Threshold harus berada dalam rentang [%.2f - %.2f] untuk metode ini.\n",
+               lowThreshold, highThreshold);
+        return false;
+    }
+    return true;
+}
+
 void chooseErrorMethod()
 {
     while(true)
@@ -23,8 +61,21 @@ void chooseErrorMethod()
         }
         else
         {
-            printf("\033[1;33m[Input]\033[0m Masukkan Threshold : ");
-            scanf("%d", &threshold);
+            // [Input] Threshold
+            double tempThreshold;
+            while (true) {
+                printf("\033[1;33m[Input]\033[0m Masukkan Threshold : ");
+                scanf("%lf", &tempThreshold);
+
+                if (!validateThreshold(choice, tempThreshold)) {
+                    continue;
+                }
+
+                threshold = tempThreshold;
+                break;
+            }
+
+            // Input minSize
             printf("\033[1;33m[Input]\033[0m Masukkan ukuran blok minimum : ");
             scanf("%d", &minSize);
             break;
@@ -100,24 +151,18 @@ double calculateMAD(uint8_t *data, int width, int height, int startX, int endX, 
 
 double calculateMaxPixelDifferences(uint8_t *data, int width, int height, int startX, int endX, int startY, int endY)
 {
-    double maxDiff = 0.0;
-    int count = (endX - startX) * (endY - startY);
-
-    if (count == 0) return 0.0;
-
+    uint8_t minVal[3] = {255, 255, 255}, maxVal[3] = {0, 0, 0};
     for (int y = startY; y < endY; y++) {
         for (int x = startX; x < endX; x++) {
             int idx = (y * width + x) * 3;
             for (int c = 0; c < 3; c++) {
-                double diff = fabs(data[idx + c] - data[idx + c]);
-                if (diff > maxDiff) {
-                    maxDiff = diff;
-                }
+                if (data[idx + c] < minVal[c]) minVal[c] = data[idx + c];
+                if (data[idx + c] > maxVal[c]) maxVal[c] = data[idx + c];
             }
         }
     }
-
-    return maxDiff / count;
+    return (double)(maxVal[0] - minVal[0] + maxVal[1] - minVal[1] + maxVal[2] - minVal[2]) / 3.0;
+    
 }
 
 double compute_entropy(int *hist, int count) {

@@ -58,12 +58,14 @@ void processImage(Image* im) {
     
     // Timer Mulai
     clock_t start = clock();
-    divideNConquer(im, threshold, 0, im->width, 0, im->height, minSize);
+    divideNConquer(im, threshold, 0, im->width, 0, im->height, minSize, 0);
     clock_t end = clock();
     // Timer Selesai
 
     double timeTaken = (double)(end - start) / CLOCKS_PER_SEC;
     printf("\033[1;32m[INFO]\033[0m Gambar berhasil diproses dalam waktu \033[1;34m%.2f detik\033[0m\n", timeTaken);
+    printf("\033[1;32m[INFO]\033[0m Kedalaman pohon: %d\n", maxDepth);
+    printf("\033[1;32m[INFO]\033[0m Banyak simpul pada pohon: %d\n", nodeCount);
 }
 
 int main() 
